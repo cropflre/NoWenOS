@@ -170,9 +170,9 @@ export default function AlertsPage() {
           )}
           <div className="space-y-2">
             {rules.map((rule) => (
-              <div key={rule.id} className="flex items-center justify-between rounded-lg border px-4 py-3">
+              <div key={rule.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-all hover:border-border/80">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className={"h-4 w-4 " + (rule.enabled ? "text-amber-500" : "text-slate-300")} />
+                  <AlertTriangle className={"h-4 w-4 " + (rule.enabled ? "text-amber-400" : "text-muted-foreground/40")} />
                   <div>
                     <p className="text-sm font-medium">{rule.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -200,7 +200,7 @@ export default function AlertsPage() {
           <CardTitle className="text-lg">
             {t("alerts.history")}
             {unseen > 0 && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{unseen}</span>
+              <span className="ml-2 inline-flex items-center rounded-full bg-danger px-2 py-0.5 text-xs font-bold text-white shadow-sm shadow-danger/30">{unseen}</span>
             )}
           </CardTitle>
           <div className="flex gap-2">
@@ -225,7 +225,7 @@ export default function AlertsPage() {
           )}
           <div className="space-y-2">
             {events.map((event) => (
-              <div key={event.id} className={"flex items-start gap-3 rounded-lg border px-4 py-3 " + (!event.seen ? "bg-amber-50 border-amber-200" : "")}>
+              <div key={event.id} className={"flex items-start gap-3 rounded-xl border px-4 py-3 transition-all " + (!event.seen ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-card")}>
                 {event.level === "critical" ? (
                   <AlertCircle className="mt-0.5 h-4 w-4 text-red-500 shrink-0" />
                 ) : (
@@ -236,7 +236,7 @@ export default function AlertsPage() {
                   <p className="text-xs text-muted-foreground">{event.message}</p>
                   <p className="text-xs text-muted-foreground mt-1">{event.createdAt}</p>
                 </div>
-                <span className={"shrink-0 rounded-full px-2 py-0.5 text-xs font-medium " + (event.level === "critical" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")}>
+                <span className={"shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium " + (event.level === "critical" ? "border-red-500/20 bg-red-500/10 text-red-400" : "border-amber-500/20 bg-amber-500/10 text-amber-400")}>
                   {event.level}
                 </span>
               </div>
@@ -247,3 +247,4 @@ export default function AlertsPage() {
     </div>
   );
 }
+
