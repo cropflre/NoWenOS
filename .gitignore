@@ -25,6 +25,9 @@ Thumbs.db
 # logs
 *.log
 
+# backup files
+*.bak
+
 # go
 server/bin/
 *.exe
