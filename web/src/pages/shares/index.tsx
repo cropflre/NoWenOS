@@ -128,7 +128,7 @@ export default function SharesPage() {
         {samba && (
           <Card>
             <CardContent className="flex items-center gap-3 py-3">
-              <div className={"h-3 w-3 rounded-full " + (samba.running ? "bg-green-500" : samba.installed ? "bg-amber-500" : "bg-red-500")} />
+              <div className={"h-2.5 w-2.5 rounded-full " + (samba.running ? "bg-green-400 shadow-sm shadow-green-400/50" : samba.installed ? "bg-amber-400" : "bg-red-400")} />
               <div>
                 <span className="text-sm font-medium">{t("shares.samba")}</span>
                 <p className="text-xs text-muted-foreground">{samba.running ? t("shares.running") : samba.installed ? t("shares.installedStopped") : t("shares.notInstalled")}</p>
@@ -139,7 +139,7 @@ export default function SharesPage() {
         {webdavStatus && (
           <Card>
             <CardContent className="flex items-center gap-3 py-3">
-              <div className={"h-3 w-3 rounded-full " + (webdavStatus.running ? "bg-green-500" : webdavStatus.installed ? "bg-amber-500" : "bg-red-500")} />
+              <div className={"h-2.5 w-2.5 rounded-full " + (webdavStatus.running ? "bg-green-400 shadow-sm shadow-green-400/50" : webdavStatus.installed ? "bg-amber-400" : "bg-red-400")} />
               <div>
                 <span className="text-sm font-medium">{t("shares.webdav")}</span>
                 <p className="text-xs text-muted-foreground">{webdavStatus.running ? t("shares.running") : webdavStatus.installed ? t("shares.installedStopped") : t("shares.notInstalled")}</p>
@@ -150,7 +150,7 @@ export default function SharesPage() {
         {nfsStatus && (
           <Card>
             <CardContent className="flex items-center gap-3 py-3">
-              <div className={"h-3 w-3 rounded-full " + (nfsStatus.running ? "bg-green-500" : nfsStatus.installed ? "bg-amber-500" : "bg-red-500")} />
+              <div className={"h-2.5 w-2.5 rounded-full " + (nfsStatus.running ? "bg-green-400 shadow-sm shadow-green-400/50" : nfsStatus.installed ? "bg-amber-400" : "bg-red-400")} />
               <div>
                 <span className="text-sm font-medium">{t("shares.nfs")}</span>
                 <p className="text-xs text-muted-foreground">{nfsStatus.running ? t("shares.running") : nfsStatus.installed ? t("shares.installedStopped") : t("shares.notInstalled")}</p>
@@ -218,7 +218,7 @@ export default function SharesPage() {
       {/* Share List */}
       {sharesQuery.isLoading && <p className="text-sm text-muted-foreground">t("shares.loading")</p>}
       {sharesQuery.isError && (
-        <Card className="border-destructive"><CardContent className="pt-6"><p className="text-sm text-destructive">t("shares.failed")</p></CardContent></Card>
+        <Card className="border-danger/30 bg-danger/5"><CardContent className="pt-6"><p className="text-sm text-danger">t("shares.failed")</p></CardContent></Card>
       )}
       {shares.length === 0 && !sharesQuery.isLoading && (
         <Card>
@@ -231,16 +231,16 @@ export default function SharesPage() {
 
       <div className="space-y-3">
         {shares.map((share) => (
-          <Card key={share.id}>
+          <Card key={share.id} className="border-border bg-card transition-all duration-200 hover:border-border/80">
             <CardContent className="flex items-center justify-between py-4">
               <div className="flex items-center gap-4">
-                <div className={"flex h-10 w-10 items-center justify-center rounded-lg " + (share.enabled ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500")}>
+                <div className={"flex h-10 w-10 items-center justify-center rounded-xl transition-all " + (share.enabled ? "bg-cyan-500/10 text-cyan-400 shadow-sm shadow-cyan-500/10" : "bg-muted text-muted-foreground")}>
                   <Share2 className="h-5 w-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-medium">{share.name}</p>
-                    <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">{share.protocol.toUpperCase()}</span>
+                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-cyan-400">{share.protocol.toUpperCase()}</span>
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <FolderOpen className="h-3 w-3" /> {share.path}
@@ -251,10 +251,10 @@ export default function SharesPage() {
 
               <div className="flex items-center gap-2">
                 {share.readOnly && (
-                  <span className="rounded-full px-2 py-0.5 text-xs bg-amber-100 text-amber-700">{t("shares.readOnly")}</span>
+                  <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">{t("shares.readOnly")}</span>
                 )}
                 {share.guest && (
-                  <span className="rounded-full px-2 py-0.5 text-xs bg-purple-100 text-purple-700">{t("shares.guest")}</span>
+                  <span className="rounded-full border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-400">{t("shares.guest")}</span>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => toggleMutation.mutate({ id: share.id, enabled: !share.enabled })} className="h-8 w-8 p-0" title={share.enabled ? t("common.disable") : t("common.enable")}>
                   {share.enabled ? <ToggleRight className="h-5 w-5 text-green-600" /> : <ToggleLeft className="h-5 w-5 text-slate-400" />}
@@ -273,6 +273,7 @@ export default function SharesPage() {
     </div>
   );
 }
+
 
 
 
