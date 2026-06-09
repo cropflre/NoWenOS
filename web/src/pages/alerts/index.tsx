@@ -27,8 +27,10 @@ import {
   CheckCheck,
   BellOff,
 } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function AlertsPage() {
+  const t = useTranslation();
   const queryClient = useQueryClient();
   const toast = useToast();
   const [showForm, setShowForm] = useState(false);
@@ -52,9 +54,9 @@ export default function AlertsPage() {
       queryClient.invalidateQueries({ queryKey: ["alert-rules"] });
       setShowForm(false);
       setForm({ name: "", metric: "cpu", operator: "gt", threshold: 80 });
-      toast.success("Alert rule created.");
+      toast.success(t("alerts.ruleCreated"));
     },
-    onError: (err: Error) => toast.error(err.message || "Failed to create rule."),
+    onError: (err: Error) => toast.error(err.message || t("alerts.createFailed")),
   });
 
   const toggleMutation = useMutation({
@@ -67,9 +69,9 @@ export default function AlertsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alert-rules"] });
       queryClient.invalidateQueries({ queryKey: ["alert-events"] });
-      toast.success("Rule deleted.");
+      toast.success(t("alerts.ruleDeleted"));
     },
-    onError: (err: Error) => toast.error(err.message || "Failed to delete rule."),
+    onError: (err: Error) => toast.error(err.message || t("alerts.deleteFailed")),
   });
 
   const markSeenMutation = useMutation({
@@ -81,7 +83,7 @@ export default function AlertsPage() {
     mutationFn: clearAlertEvents,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alert-events"] });
-      toast.success("Alert history cleared.");
+      toast.success(t("alerts.historyCleared"));
     },
   });
 
@@ -98,12 +100,12 @@ export default function AlertsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
-          <p className="text-muted-foreground">System monitoring rules and alert history.</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("alerts.title")}</h1>
+          <p className="text-muted-foreground">{t("alerts.subtitle")}</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Rule
+          {t("alerts.addRule")}
         </Button>
       </div>
 
@@ -111,7 +113,7 @@ export default function AlertsPage() {
       {showForm && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>New Alert Rule</CardTitle>
+            <CardTitle>{t("alerts.newRule")}</CardTitle>
             <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
               <X className="h-4 w-4" />
             </Button>
@@ -120,11 +122,11 @@ export default function AlertsPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-4">
                 <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. High CPU" required />
+                  <Label>{t("alerts.name")}</Label>
+                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("alerts.namePlaceholder")} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Metric</Label>
+                  <Label>{t("alerts.metric")}</Label>
                   <select value={form.metric} onChange={(e) => setForm({ ...form, metric: e.target.value })}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                     <option value="cpu">CPU (%)</option>
@@ -133,7 +135,7 @@ export default function AlertsPage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Condition</Label>
+                  <Label>{t("alerts.operator")}</Label>
                   <select value={form.operator} onChange={(e) => setForm({ ...form, operator: e.target.value })}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                     <option value="gt">Greater than</option>
@@ -141,15 +143,15 @@ export default function AlertsPage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Threshold (%)</Label>
+                  <Label>{t("alerts.threshold")}</Label>
                   <Input type="number" min="0" max="100" value={form.threshold} onChange={(e) => setForm({ ...form, threshold: Number(e.target.value) })} required />
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Creating..." : "Create Rule"}
+                  {createMutation.isPending ? t("alerts.creating") : t("alerts.createRule")}
                 </Button>
-                <Button variant="outline" type="button" onClick={() => setShowForm(false)}>Cancel</Button>
+                <Button variant="outline" type="button" onClick={() => setShowForm(false)}>{t("common.cancel")}</Button>
               </div>
             </form>
           </CardContent>
@@ -159,12 +161,12 @@ export default function AlertsPage() {
       {/* Rules */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Alert Rules</CardTitle>
+          <CardTitle className="text-lg">{t("alerts.rules")}</CardTitle>
         </CardHeader>
         <CardContent>
-          {rulesQuery.isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+          {rulesQuery.isLoading && <p className="text-sm text-muted-foreground">{t("alerts.loading")}</p>}
           {rules.length === 0 && !rulesQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">No alert rules configured. Add one to start monitoring.</p>
+            <p className="text-sm text-muted-foreground">{t("alerts.noRules")}</p>
           )}
           <div className="space-y-2">
             {rules.map((rule) => (
@@ -196,7 +198,7 @@ export default function AlertsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-lg">
-            Alert History
+            {t("alerts.history")}
             {unseen > 0 && (
               <span className="ml-2 inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{unseen}</span>
             )}
@@ -205,21 +207,21 @@ export default function AlertsPage() {
             {unseen > 0 && (
               <Button variant="outline" size="sm" onClick={() => markSeenMutation.mutate()}>
                 <CheckCheck className="mr-1 h-3 w-3" />
-                Mark Read
+                {t("alerts.markRead")}
               </Button>
             )}
             {events.length > 0 && (
               <Button variant="outline" size="sm" onClick={() => clearEventsMutation.mutate()}>
                 <BellOff className="mr-1 h-3 w-3" />
-                Clear
+                {t("alerts.clear")}
               </Button>
             )}
           </div>
         </CardHeader>
         <CardContent>
-          {eventsQuery.isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+          {eventsQuery.isLoading && <p className="text-sm text-muted-foreground">{t("alerts.loading")}</p>}
           {events.length === 0 && !eventsQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">No alerts triggered yet.</p>
+            <p className="text-sm text-muted-foreground">{t("alerts.noEvents")}</p>
           )}
           <div className="space-y-2">
             {events.map((event) => (
