@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   browseFiles,
   uploadFile,
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 export default function FilesPage() {
+  const t = useTranslation();
   const [currentPath, setCurrentPath] = useState(".");
   const [showMkdir, setShowMkdir] = useState(false);
   const [newDirName, setNewDirName] = useState("");
@@ -37,10 +39,10 @@ export default function FilesPage() {
     mutationFn: ({ path, file }: { path: string; file: globalThis.File }) => uploadFile(path, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files", currentPath] });
-      toast.success("File uploaded successfully.");
+      toast.success(t("files.uploadSuccess"));
     },
     onError: () => {
-      toast.error("Upload failed.");
+      toast.error(t("files.uploadFailed"));
     },
   });
 
@@ -48,10 +50,10 @@ export default function FilesPage() {
     mutationFn: (path: string) => deleteFile(path),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["files", currentPath] });
-      toast.success("File deleted.");
+      toast.success(t("files.deleteSuccess"));
     },
     onError: () => {
-      toast.error("Failed to delete file.");
+      toast.error(t("files.deleteFailed"));
     },
   });
 
@@ -62,10 +64,10 @@ export default function FilesPage() {
       queryClient.invalidateQueries({ queryKey: ["files", currentPath] });
       setNewDirName("");
       setShowMkdir(false);
-      toast.success("Folder created.");
+      toast.success(t("files.folderCreated"));
     },
     onError: () => {
-      toast.error("Failed to create folder.");
+      toast.error(t("files.folderFailed"));
     },
   });
 
@@ -93,7 +95,7 @@ export default function FilesPage() {
   }
 
   function handleDelete(filePath: string, name: string) {
-    if (confirm(`Delete "${name}"?`)) {
+    if (confirm(`${t("common.confirm")} "${name}"?`)) {
       deleteMutation.mutate(filePath);
     }
   }
@@ -114,17 +116,17 @@ export default function FilesPage() {
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Files</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("files.title")}</h1>
           <p className="text-sm text-muted-foreground">{result?.path ?? currentPath}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleGoUp} disabled={!result?.parent}>
             <ArrowLeft className="mr-1 h-3 w-3" />
-            Up
+            {t("files.up")}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowMkdir(!showMkdir)}>
             <FolderPlus className="mr-1 h-3 w-3" />
-            New Folder
+            {t("files.newFolder")}
           </Button>
           <input
             ref={setFileInputEl}
@@ -139,7 +141,7 @@ export default function FilesPage() {
             disabled={uploadMutation.isPending}
           >
             <Upload className="mr-1 h-3 w-3" />
-            Upload
+            {t("files.upload")}
           </Button>
         </div>
       </div>
@@ -151,23 +153,23 @@ export default function FilesPage() {
               type="text"
               value={newDirName}
               onChange={(e) => setNewDirName(e.target.value)}
-              placeholder="New folder name"
+              placeholder={t("files.newFolderName")}
               className="flex h-9 flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onKeyDown={(e) => e.key === "Enter" && handleMkdir()}
             />
             <Button size="sm" onClick={handleMkdir} disabled={mkdirMutation.isPending}>
-              Create
+              {t("files.create")}
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {filesQuery.isLoading && <p className="text-sm text-muted-foreground">Loading files...</p>}
+      {filesQuery.isLoading && <p className="text-sm text-muted-foreground">{t("files.loading")}</p>}
 
       {filesQuery.isError && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
-            <p className="text-sm text-destructive">Failed to load directory.</p>
+            <p className="text-sm text-destructive">{t("files.failed")}</p>
           </CardContent>
         </Card>
       )}
@@ -175,7 +177,7 @@ export default function FilesPage() {
       {result && result.entries.length === 0 && (
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Empty directory.</p>
+            <p className="text-sm text-muted-foreground">{t("files.empty")}</p>
           </CardContent>
         </Card>
       )}
@@ -185,10 +187,10 @@ export default function FilesPage() {
           <CardContent className="p-0">
             <div className="divide-y">
               <div className="grid grid-cols-[1fr_120px_180px_120px] px-4 py-2 text-xs font-medium text-muted-foreground">
-                <span>Name</span>
-                <span className="text-right">Size</span>
-                <span className="text-right">Modified</span>
-                <span className="text-right">Actions</span>
+                <span>{t("files.name")}</span>
+                <span className="text-right">{t("files.size")}</span>
+                <span className="text-right">{t("files.modified")}</span>
+                <span className="text-right">{t("files.actions")}</span>
               </div>
 
               {result.entries.map((entry) => (
