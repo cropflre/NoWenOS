@@ -16,6 +16,39 @@ export interface DesktopWindow {
   maximized: boolean;
 }
 
+// Window layout persistence
+const LAYOUT_KEY = "nowenos-window-layout";
+
+interface SavedLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function loadLayouts(): Record<string, SavedLayout> {
+  try {
+    const raw = localStorage.getItem(LAYOUT_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLayout(appId: string, layout: SavedLayout) {
+  try {
+    const all = loadLayouts();
+    all[appId] = layout;
+    localStorage.setItem(LAYOUT_KEY, JSON.stringify(all));
+  } catch {
+    // ignore
+  }
+}
+
+function getLayout(appId: string): SavedLayout | null {
+  return loadLayouts()[appId] ?? null;
+}
+
 interface DesktopState {
   windows: DesktopWindow[];
   activeWindowId: string | null;
@@ -57,19 +90,26 @@ export const useDesktopStore = create<DesktopState>()((set, get) => ({
     }
 
     windowCounter++;
-    const id = `win-${appId}-${windowCounter}`;
+    const id = "win-" + appId + "-" + windowCounter;
     const offsetX = (windowCounter % 6) * 30;
     const offsetY = (windowCounter % 6) * 30;
+
+    // Use saved layout if available
+    const saved = getLayout(appId);
+    const x = opts?.x ?? saved?.x ?? 120 + offsetX;
+    const y = opts?.y ?? saved?.y ?? 60 + offsetY;
+    const width = opts?.width ?? saved?.width ?? 1000;
+    const height = opts?.height ?? saved?.height ?? 680;
 
     const newWindow: DesktopWindow = {
       id,
       appId,
       title,
       icon,
-      x: opts?.x ?? 120 + offsetX,
-      y: opts?.y ?? 60 + offsetY,
-      width: opts?.width ?? 1000,
-      height: opts?.height ?? 680,
+      x,
+      y,
+      width,
+      height,
       minWidth: opts?.minWidth ?? 600,
       minHeight: opts?.minHeight ?? 400,
       zIndex: state.nextZIndex,
@@ -121,14 +161,18 @@ export const useDesktopStore = create<DesktopState>()((set, get) => ({
     })),
 
   updateWindowPosition: (id, x, y) =>
-    set((s) => ({
-      windows: s.windows.map((w) => (w.id === id ? { ...w, x, y } : w)),
-    })),
+    set((s) => {
+      const win = s.windows.find((w) => w.id === id);
+      if (win) saveLayout(win.appId, { x, y, width: win.width, height: win.height });
+      return { windows: s.windows.map((w) => (w.id === id ? { ...w, x, y } : w)) };
+    }),
 
   updateWindowSize: (id, width, height) =>
-    set((s) => ({
-      windows: s.windows.map((w) => (w.id === id ? { ...w, width, height } : w)),
-    })),
+    set((s) => {
+      const win = s.windows.find((w) => w.id === id);
+      if (win) saveLayout(win.appId, { x: win.x, y: win.y, width, height });
+      return { windows: s.windows.map((w) => (w.id === id ? { ...w, width, height } : w)) };
+    }),
 
   toggleDock: () => set((s) => ({ dockCollapsed: !s.dockCollapsed })),
 }));
