@@ -256,3 +256,73 @@ func CreateDir(parentPath, dirName string) (*FileEntry, error) {
 		ModTime: "",
 	}, nil
 }
+
+func Rename(oldPath, newName string) (*FileEntry, error) {
+	if oldPath == "" || newName == "" {
+		return nil, ErrPathRequired
+	}
+	oldPath = filepath.Clean(oldPath)
+	newName = filepath.Base(newName)
+	if newName == "." || newName == ".." {
+		return nil, errors.New("invalid name")
+	}
+
+	info, err := os.Stat(oldPath)
+	if err != nil {
+		return nil, ErrPathNotFound
+	}
+
+	newPath := filepath.Join(filepath.Dir(oldPath), newName)
+	if _, err := os.Stat(newPath); err == nil {
+		return nil, ErrFileExists
+	}
+
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return nil, err
+	}
+
+	newInfo, _ := os.Stat(newPath)
+	return &FileEntry{
+		Name:    newName,
+		Path:    newPath,
+		IsDir:   info.IsDir(),
+		Size:    newInfo.Size(),
+		ModTime: newInfo.ModTime().Format("2006-01-02 15:04:05"),
+	}, nil
+}
+
+func Move(sourcePath, destDir string) (*FileEntry, error) {
+	if sourcePath == "" || destDir == "" {
+		return nil, ErrPathRequired
+	}
+	sourcePath = filepath.Clean(sourcePath)
+	destDir = filepath.Clean(destDir)
+
+	info, err := os.Stat(sourcePath)
+	if err != nil {
+		return nil, ErrPathNotFound
+	}
+
+	destInfo, err := os.Stat(destDir)
+	if err != nil || !destInfo.IsDir() {
+		return nil, ErrNotDirectory
+	}
+
+	newPath := filepath.Join(destDir, filepath.Base(sourcePath))
+	if _, err := os.Stat(newPath); err == nil {
+		return nil, ErrFileExists
+	}
+
+	if err := os.Rename(sourcePath, newPath); err != nil {
+		return nil, err
+	}
+
+	newInfo, _ := os.Stat(newPath)
+	return &FileEntry{
+		Name:    filepath.Base(newPath),
+		Path:    newPath,
+		IsDir:   info.IsDir(),
+		Size:    newInfo.Size(),
+		ModTime: newInfo.ModTime().Format("2006-01-02 15:04:05"),
+	}, nil
+}
