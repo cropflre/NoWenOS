@@ -316,3 +316,40 @@ function GaugeCard({ icon, label, value, detail, color, loading }: {
     </Card>
   );
 }
+
+function GaugeCardWithChart({ icon, label, value, detail, color, loading, chartData, chartColor }: {
+  icon: React.ReactNode; label: string; value: number; detail: string; color: string; loading: boolean;
+  chartData: number[]; chartColor: string;
+}) {
+  const c = colorMap[color] ?? colorMap.cyan;
+  const pct = Math.min(100, Math.max(0, value));
+  const isHigh = pct > 85;
+
+  return (
+    <Card className={`border-border bg-card transition-all duration-200 hover:border-border/80 ${isHigh ? "border-danger/30" : ""}`}>
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${c.bg}`}>
+              <span className={c.text}>{icon}</span>
+            </div>
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+          </div>
+          <span className={`text-2xl font-bold tabular-nums ${isHigh ? "text-danger" : "text-foreground"}`}>
+            {loading ? "..." : `${pct.toFixed(1)}%`}
+          </span>
+        </div>
+        <div className={`h-2 w-full rounded-full ${c.barBg} overflow-hidden`}>
+          <div
+            className={`h-full rounded-full transition-all duration-700 ease-out ${isHigh ? "bg-gradient-to-r from-red-500 to-red-400" : c.bar}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">{detail}</p>
+          <MiniChart data={chartData} color={chartColor} height={24} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
