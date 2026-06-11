@@ -68,7 +68,7 @@ export default function AppsPage() {
   const filtered = category === "all" ? templates : templates.filter((a) => a.category === category);
 
   function handleInstall(template: AppTemplate) {
-    if (template.envVars.length > 0 && !installingId) {
+    if (template.envVars?.length > 0 && !installingId) {
       setInstallingId(template.id);
       return;
     }
@@ -129,7 +129,7 @@ export default function AppsPage() {
                   <p className="mb-3 text-xs text-muted-foreground">{app.description}</p>
 
                   {/* Env var inputs when installing */}
-                  {installingId === app.id && app.envVars.length > 0 && (
+                  {installingId === app.id && app.envVars?.length > 0 && (
                     <div className="mb-3 space-y-2 rounded-md border border-border p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium">Configuration</span>
