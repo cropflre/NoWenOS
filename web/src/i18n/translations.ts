@@ -392,6 +392,3 @@ export function t(key: string, locale: Locale): string {
   if (!entry) return key;
   return entry[locale] ?? entry.en ?? key;
 }
-
-
-
