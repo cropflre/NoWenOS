@@ -367,6 +367,24 @@ const translations: Record<string, Record<Locale, string>> = {
   // Tabs
   "logs.systemTab": { en: "System Logs", zh: "系统日志" },
   "logs.auditTab": { en: "Audit Logs", zh: "审计日志" },
+
+  // Config Export/Import
+  "config.title": { en: "Configuration", zh: "????" },
+  "config.export": { en: "Export Configuration", zh: "????" },
+  "config.import": { en: "Import Configuration", zh: "????" },
+  "config.exportSuccess": { en: "Configuration exported", zh: "?????" },
+  "config.importSuccess": { en: "Configuration imported successfully", zh: "??????" },
+  "config.importFailed": { en: "Import failed", zh: "????" },
+
+  // Update Check
+  "update.current": { en: "Current Version", zh: "????" },
+  "update.check": { en: "Check for Updates", zh: "????" },
+  "update.available": { en: "Update Available", zh: "?????" },
+  "update.latest": { en: "Latest Version", zh: "????" },
+  "update.upToDate": { en: "You are up to date", zh: "??????" },
+  "update.viewRelease": { en: "View Release", zh: "????" },
+  "update.checking": { en: "Checking...", zh: "???..." },
+
 };
 
 export function t(key: string, locale: Locale): string {

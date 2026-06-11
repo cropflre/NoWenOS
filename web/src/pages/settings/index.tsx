@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Save, Settings, Globe, Server, Upload } from "lucide-react";
+import { exportConfig, importConfig } from "@/features/config/api";
+import { Download, Upload } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/stores/toast";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -46,6 +48,36 @@ export default function SettingsPage() {
 
   function handleChange(field: keyof SettingsData, value: string | number | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleExportConfig() {
+    try {
+      const data = await exportConfig();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "nowenos-config.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(t("config.exportSuccess"));
+    } catch {
+      toast.error(t("config.importFailed"));
+    }
+  }
+
+  async function handleImportConfig(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await importConfig(data);
+      toast.success(t("config.importSuccess"));
+    } catch {
+      toast.error(t("config.importFailed"));
+    }
+    e.target.value = "";
   }
 
   return (
