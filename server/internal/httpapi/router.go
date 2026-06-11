@@ -19,6 +19,7 @@ import (
 	"nowenos-server/internal/updater"
 	"nowenos-server/internal/shares"
 	"nowenos-server/internal/systemadapter"
+	"nowenos-server/internal/appcenter"
 )
 
 func New() *gin.Engine {
@@ -833,6 +834,49 @@ func New() *gin.Engine {
 		})
 
 
+		
+		// --- App Center ---
+		api.GET("/apps/templates", func(c *gin.Context) {
+			templates := appcenter.GetBuiltinTemplates()
+			installed := appcenter.GetInstalledApps()
+			installedIDs := make(map[string]bool)
+			for _, app := range installed {
+				installedIDs[app["id"].(string)] = true
+			}
+			for i := range templates {
+				templates[i].Installed = installedIDs[templates[i].ID]
+			}
+			c.JSON(http.StatusOK, gin.H{"data": templates})
+		})
+
+		api.GET("/apps/installed", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": appcenter.GetInstalledApps()})
+		})
+
+		api.POST("/apps/install", func(c *gin.Context) {
+			var req struct {
+				TemplateID string            `json:"templateId"`
+				Env        map[string]string `json:"env"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := appcenter.InstallApp(req.TemplateID, req.Env); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "installed"}})
+		})
+
+		api.DELETE("/apps/:id", func(c *gin.Context) {
+			if err := appcenter.UninstallApp(c.Param("id")); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "uninstalled"}})
+		})
+
 		// --- Update Check ---
 		api.GET("/system/version", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"data": updater.GetVersionInfo()})
@@ -875,6 +919,9 @@ func authMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+
+
 
 
 

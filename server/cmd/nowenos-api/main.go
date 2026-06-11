@@ -1,9 +1,10 @@
-package main
+﻿package main
 
 import (
 	"log"
 
 	"nowenos-server/internal/alerts"
+	"nowenos-server/internal/appcenter"
 	"nowenos-server/internal/audit"
 	"nowenos-server/internal/auth"
 	"nowenos-server/internal/config"
@@ -27,6 +28,7 @@ func main() {
 	shares.InitTable()
 	recyclebin.InitTable()
 	audit.InitTable()
+	appcenter.InitTable()
 	alerts.StartPeriodicCheck()
 
 	r := httpapi.New()
@@ -36,3 +38,4 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
