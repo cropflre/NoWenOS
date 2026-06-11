@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchDisks } from "@/features/storage/api";
+import { fetchDisks, DiskInfo } from "@/features/storage/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HardDrive, Database, Server } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -106,7 +106,7 @@ export default function StoragePage() {
   );
 }
 
-function DiskCard({ disk, t }: { disk: { name: string; size: string; model: string; type: string; mountpoint: string; fstype: string }; t: (k: string) => string }) {
+function DiskCard({ disk, t }: { disk: DiskInfo; t: (k: string) => string }) {
   const isDisk = disk.type === "disk";
   return (
     <Card className="group border-border bg-card transition-all duration-200 hover:border-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/5">
@@ -142,9 +142,22 @@ function DiskCard({ disk, t }: { disk: { name: string; size: string; model: stri
             <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{disk.fstype}</span>
           </div>
         )}
+        {disk.mountpoint && disk.usedPct > 0 && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">{disk.used ?? "—"}</span>
+              <span className="text-muted-foreground">{disk.size}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${disk.usedPct > 90 ? "bg-danger" : disk.usedPct > 70 ? "bg-warning" : "bg-primary"}`}
+                style={{ width: `${Math.min(disk.usedPct, 100)}%` }}
+              />
+            </div>
+            <p className="text-right text-[10px] text-muted-foreground">{disk.usedPct}% used</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
-
-

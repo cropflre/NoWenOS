@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
@@ -7,7 +7,9 @@ import {
   downloadFile,
   deleteFile,
   createDirectory,
+  renameFile,
 } from "@/features/files/api";
+import { trashFile } from "@/features/recycle/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/stores/toast";
@@ -19,6 +21,7 @@ import {
   Trash2,
   FolderPlus,
   ArrowLeft,
+  Pencil,
 } from "lucide-react";
 
 export default function FilesPage() {
@@ -26,6 +29,8 @@ export default function FilesPage() {
   const [currentPath, setCurrentPath] = useState(".");
   const [showMkdir, setShowMkdir] = useState(false);
   const [newDirName, setNewDirName] = useState("");
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
   const [fileInputEl, setFileInputEl] = useState<HTMLInputElement | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -71,6 +76,26 @@ export default function FilesPage() {
     },
   });
 
+  const renameMutation = useMutation({
+    mutationFn: ({ path, newName }: { path: string; newName: string }) => renameFile(path, newName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files", currentPath] });
+      setRenamingPath(null);
+      setNewName("");
+      toast.success(t("files.renameSuccess"));
+    },
+    onError: () => toast.error(t("files.renameFailed")),
+  });
+
+  const trashMutation = useMutation({
+    mutationFn: (path: string) => trashFile(path),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files", currentPath] });
+      toast.success(t("files.trashSuccess"));
+    },
+    onError: () => toast.error(t("files.trashFailed")),
+  });
+
   const result = filesQuery.data?.data;
 
   function handleNavigate(path: string) {
@@ -94,10 +119,8 @@ export default function FilesPage() {
     downloadFile(filePath);
   }
 
-  function handleDelete(filePath: string, name: string) {
-    if (confirm(`${t("common.confirm")} "${name}"?`)) {
-      deleteMutation.mutate(filePath);
-    }
+  function handleDelete(filePath: string) {
+    trashMutation.mutate(filePath);
   }
 
   function handleMkdir() {
@@ -206,23 +229,40 @@ export default function FilesPage() {
                   key={entry.path}
                   className="grid grid-cols-[1fr_120px_180px_120px] items-center px-4 py-2.5 hover:bg-muted/30 transition-colors"
                 >
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 text-left"
-                    onClick={() => entry.isDir && handleNavigate(entry.path)}
-                  >
-                    {entry.isDir ? (
-                      <Folder className="h-4 w-4 text-cyan-400" />
-                    ) : (
-                      <File className="h-4 w-4 text-muted-foreground/60" />
-                    )}
-                    <span className={entry.isDir ? "font-medium" : ""}>{entry.name}</span>
-                  </button>
+                  {renamingPath === entry.path ? (
+                    <input
+                      autoFocus
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") renameMutation.mutate({ path: entry.path, newName });
+                        if (e.key === "Escape") { setRenamingPath(null); setNewName(""); }
+                      }}
+                      onBlur={() => { setRenamingPath(null); setNewName(""); }}
+                      className="h-7 w-48 rounded border border-primary bg-muted px-2 text-sm"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 text-left"
+                      onClick={() => entry.isDir && handleNavigate(entry.path)}
+                    >
+                      {entry.isDir ? (
+                        <Folder className="h-4 w-4 text-cyan-400" />
+                      ) : (
+                        <File className="h-4 w-4 text-muted-foreground/60" />
+                      )}
+                      <span className={entry.isDir ? "font-medium" : ""}>{entry.name}</span>
+                    </button>
+                  )}
                   <span className="text-right text-sm text-muted-foreground">
                     {entry.isDir ? "\u2014" : formatSize(entry.size)}
                   </span>
                   <span className="text-right text-sm text-muted-foreground">{entry.modTime}</span>
                   <div className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => { setRenamingPath(entry.path); setNewName(entry.name); }} className="h-8 w-8 p-0">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     {!entry.isDir && (
                       <Button variant="ghost" size="sm" onClick={() => handleDownload(entry.path)} className="h-8 w-8 p-0">
                         <Download className="h-4 w-4" />
@@ -231,7 +271,7 @@ export default function FilesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(entry.path, entry.name)}
+                      onClick={() => handleDelete(entry.path)}
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -209,5 +209,11 @@
       linear-gradient(rgba(148, 163, 184, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(148, 163, 184, 0.03) 1px, transparent 1px);
     background-size: 40px 40px;
+  }
+
+  /* Desktop window drag handle */
+  .nowenos-window-title {
+    cursor: default;
+    user-select: none;
   }
 }

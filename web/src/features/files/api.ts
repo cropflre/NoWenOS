@@ -108,3 +108,19 @@ function getToken(): string | null {
   }
   return null;
 }
+
+export interface RenameResponse {
+  data: FileEntry;
+}
+
+export interface MoveResponse {
+  data: FileEntry;
+}
+
+export async function renameFile(path: string, newName: string) {
+  return api.post<RenameResponse>("/files/rename", { path, newName });
+}
+
+export async function moveFile(sourcePath: string, destDir: string) {
+  return api.post<MoveResponse>("/files/move", { sourcePath, destDir });
+}

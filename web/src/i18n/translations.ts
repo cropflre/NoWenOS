@@ -1,4 +1,4 @@
-export type Locale = "en" | "zh";
+﻿export type Locale = "en" | "zh";
 
 const translations: Record<string, Record<Locale, string>> = {
   // Sidebar
@@ -310,6 +310,40 @@ const translations: Record<string, Record<Locale, string>> = {
   "settings.error": { en: "Error", zh: "错误" },
   "settings.language": { en: "Language", zh: "语言" },
   "settings.languageDesc": { en: "Select display language", zh: "选择界面显示语言" },
+
+  // Desktop Shell
+  "topbar.search": { en: "Search...", zh: "搜索..." },
+  "launcher.title": { en: "Applications", zh: "应用" },
+  "command.placeholder": { en: "Search applications...", zh: "搜索应用..." },
+  "command.empty": { en: "No results found.", zh: "未找到结果。" },
+  "command.apps": { en: "Applications", zh: "应用" },
+
+  // Recycle Bin
+  "nav.recycle": { en: "Recycle Bin", zh: "回收站" },
+  "recycle.title": { en: "Recycle Bin", zh: "回收站" },
+  "recycle.loading": { en: "Loading...", zh: "加载中..." },
+  "recycle.failed": { en: "Failed to load recycle bin", zh: "加载回收站失败" },
+  "recycle.empty": { en: "Recycle bin is empty", zh: "回收站为空" },
+  "recycle.originalPath": { en: "Original Path", zh: "原始路径" },
+  "recycle.restore": { en: "Restore", zh: "恢复" },
+  "recycle.restored": { en: "Item restored", zh: "已恢复" },
+  "recycle.restoreFailed": { en: "Restore failed", zh: "恢复失败" },
+  "recycle.permanentDelete": { en: "Delete permanently", zh: "永久删除" },
+  "recycle.deleted": { en: "Permanently deleted", zh: "已永久删除" },
+  "recycle.deleteFailed": { en: "Delete failed", zh: "删除失败" },
+  "recycle.emptyTrash": { en: "Empty Trash", zh: "清空回收站" },
+  "recycle.confirmEmpty": { en: "Are you sure? This cannot be undone.", zh: "确定吗？此操作不可撤销。" },
+  "recycle.confirmDelete": { en: "Permanently delete this item?", zh: "永久删除此项目？" },
+  "recycle.emptied": { en: "Trash emptied", zh: "回收站已清空" },
+  "recycle.emptyFailed": { en: "Failed to empty trash", zh: "清空回收站失败" },
+  "recycle.yes": { en: "Yes, empty", zh: "确定清空" },
+
+  // Files - rename/trash
+  "files.rename": { en: "Rename", zh: "重命名" },
+  "files.renameSuccess": { en: "Renamed successfully", zh: "重命名成功" },
+  "files.renameFailed": { en: "Rename failed", zh: "重命名失败" },
+  "files.trashSuccess": { en: "Moved to recycle bin", zh: "已移至回收站" },
+  "files.trashFailed": { en: "Failed to move to recycle bin", zh: "移至回收站失败" },
 };
 
 export function t(key: string, locale: Locale): string {

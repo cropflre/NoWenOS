@@ -10,6 +10,7 @@ import (
 	"nowenos-server/internal/auth"
 	"nowenos-server/internal/filemanager"
 	"nowenos-server/internal/logviewer"
+	"nowenos-server/internal/recyclebin"
 	"nowenos-server/internal/settings"
 	"nowenos-server/internal/sysinfo"
 	"nowenos-server/internal/alerts"
@@ -535,6 +536,90 @@ func New() *gin.Engine {
 				return
 			}
 
+			c.JSON(http.StatusOK, gin.H{"data": entry})
+		})
+
+				// ── Recycle Bin ──
+		api.GET("/recycle-bin", func(c *gin.Context) {
+			items := recyclebin.GetItems()
+			c.JSON(http.StatusOK, gin.H{"data": items})
+		})
+
+		api.POST("/recycle-bin/trash", func(c *gin.Context) {
+			var req struct {
+				Path string `json:"path"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			username, _ := c.Get("username")
+			item, err := recyclebin.MoveToTrash(req.Path, fmt.Sprintf("%v", username))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": item})
+		})
+
+		api.POST("/recycle-bin/:id/restore", func(c *gin.Context) {
+			id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+			if err := recyclebin.Restore(id); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "restored"}})
+		})
+
+		api.DELETE("/recycle-bin/:id", func(c *gin.Context) {
+			id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+			if err := recyclebin.PermanentDelete(id); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "deleted"}})
+		})
+
+		api.POST("/recycle-bin/empty", func(c *gin.Context) {
+			if err := recyclebin.EmptyTrash(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "emptied"}})
+		})
+
+		// ── File Rename / Move ──
+		api.POST("/files/rename", func(c *gin.Context) {
+			var req struct {
+				Path    string `json:"path"`
+				NewName string `json:"newName"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			entry, err := filemanager.Rename(req.Path, req.NewName)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": entry})
+		})
+
+		api.POST("/files/move", func(c *gin.Context) {
+			var req struct {
+				SourcePath string `json:"sourcePath"`
+				DestDir    string `json:"destDir"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			entry, err := filemanager.Move(req.SourcePath, req.DestDir)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
 			c.JSON(http.StatusOK, gin.H{"data": entry})
 		})
 
