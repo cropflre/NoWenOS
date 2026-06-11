@@ -5,9 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Settings, Globe, Server, Upload } from "lucide-react";
+import { Save, Settings, Globe, Server, Upload, Download } from "lucide-react";
 import { exportConfig, importConfig } from "@/features/config/api";
-import { Download, Upload } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/stores/toast";
 import { useTranslation } from "@/hooks/useTranslation";
