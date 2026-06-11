@@ -344,6 +344,29 @@ const translations: Record<string, Record<Locale, string>> = {
   "files.renameFailed": { en: "Rename failed", zh: "重命名失败" },
   "files.trashSuccess": { en: "Moved to recycle bin", zh: "已移至回收站" },
   "files.trashFailed": { en: "Failed to move to recycle bin", zh: "移至回收站失败" },
+
+  // Groups
+  "groups.title": { en: "Groups", zh: "分组" },
+  "groups.create": { en: "Create Group", zh: "创建分组" },
+  "groups.name": { en: "Group Name", zh: "组名" },
+  "groups.comment": { en: "Comment", zh: "备注" },
+  "groups.members": { en: "Members", zh: "成员" },
+  "groups.addMember": { en: "Add Member", zh: "添加成员" },
+  "groups.noGroups": { en: "No groups created yet", zh: "尚未创建分组" },
+
+  // Audit
+  "audit.title": { en: "Audit Log", zh: "审计日志" },
+  "audit.timestamp": { en: "Timestamp", zh: "时间" },
+  "audit.username": { en: "User", zh: "用户" },
+  "audit.action": { en: "Action", zh: "操作" },
+  "audit.resource": { en: "Resource", zh: "资源" },
+  "audit.status": { en: "Status", zh: "状态" },
+  "audit.ip": { en: "IP", zh: "IP" },
+  "audit.noLogs": { en: "No audit logs yet", zh: "暂无审计日志" },
+
+  // Tabs
+  "logs.systemTab": { en: "System Logs", zh: "系统日志" },
+  "logs.auditTab": { en: "Audit Logs", zh: "审计日志" },
 };
 
 export function t(key: string, locale: Locale): string {

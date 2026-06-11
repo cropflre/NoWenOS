@@ -1,12 +1,13 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchUsers, createUser, deleteUser, changePassword } from "@/features/users/api";
+import { fetchGroups, createGroup, deleteGroup, addMember, removeMember, fetchGroupMembers, type Group } from "@/features/groups/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/stores/toast";
-import { UserPlus, Trash2, User, Shield, KeyRound, X } from "lucide-react";
+import { UserPlus, Trash2, User, Shield, KeyRound, X, Users, Plus, UserMinus } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
 export default function UsersPage() {
@@ -136,6 +137,175 @@ export default function UsersPage() {
           </Card>
         ))}
       </div>
+
+      <GroupsSection />
+    </div>
+  );
+}
+
+function GroupsSection() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const t = useTranslation();
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupComment, setNewGroupComment] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
+  const [newMember, setNewMember] = useState("");
+
+  const groupsQuery = useQuery({ queryKey: ["groups"], queryFn: fetchGroups });
+  const membersQuery = useQuery({
+    queryKey: ["group-members", selectedGroup],
+    queryFn: () => fetchGroupMembers(selectedGroup!),
+    enabled: selectedGroup !== null,
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: () => createGroup(newGroupName, newGroupComment),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      setNewGroupName(""); setNewGroupComment("");
+      toast.success(t("groups.create") + " OK");
+    },
+    onError: (err: Error) => { toast.error(err.message); },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: (id: number) => deleteGroup(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      setSelectedGroup(null);
+    },
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: ({ groupId, username }: { groupId: number; username: string }) => addMember(groupId, username),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["group-members"] });
+      setNewMember("");
+    },
+    onError: (err: Error) => { toast.error(err.message); },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: ({ groupId, username }: { groupId: number; username: string }) => removeMember(groupId, username),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["group-members"] }); },
+    onError: (err: Error) => { toast.error(err.message); },
+  });
+
+  const groups = groupsQuery.data?.data ?? [];
+  const members = membersQuery.data?.data ?? [];
+
+  function handleCreateGroup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newGroupName.trim()) return;
+    createGroupMutation.mutate();
+  }
+
+  function handleAddMember(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newMember.trim() || selectedGroup === null) return;
+    addMemberMutation.mutate({ groupId: selectedGroup, username: newMember });
+  }
+
+  const selectedGroupInfo = groups.find((g) => g.id === selectedGroup);
+
+  return (
+    <div className="space-y-4 pt-4 border-t border-border">
+      <div className="flex items-center gap-2">
+        <Users className="h-5 w-5 text-muted-foreground" />
+        <h2 className="text-lg font-semibold">{t("groups.title")}</h2>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm">{t("groups.create")}</CardTitle></CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateGroup} className="flex items-end gap-3">
+            <div className="space-y-1 flex-1">
+              <Label className="text-xs">{t("groups.name")}</Label>
+              <Input value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="groupname" required />
+            </div>
+            <div className="space-y-1 flex-1">
+              <Label className="text-xs">{t("groups.comment")}</Label>
+              <Input value={newGroupComment} onChange={(e) => setNewGroupComment(e.target.value)} placeholder={t("groups.comment")} />
+            </div>
+            <Button type="submit" size="sm" disabled={createGroupMutation.isPending} className="gap-1">
+              <Plus className="h-3.5 w-3.5" />{t("groups.create")}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {groupsQuery.isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+
+      {groups.length === 0 && !groupsQuery.isLoading && (
+        <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">{t("groups.noGroups")}</p></CardContent></Card>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {groups.map((group) => (
+          <Card
+            key={group.id}
+            className={`cursor-pointer transition-all duration-200 ${selectedGroup === group.id ? "border-cyan-500/50 bg-cyan-500/5" : "border-border bg-card hover:border-border/80"}`}
+            onClick={() => setSelectedGroup(selectedGroup === group.id ? null : group.id)}
+          >
+            <CardContent className="flex items-center justify-between py-3">
+              <div>
+                <p className="font-medium">{group.name}</p>
+                {group.comment && <p className="text-xs text-muted-foreground">{group.comment}</p>}
+              </div>
+              <Button
+                variant="ghost" size="sm"
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                onClick={(e) => { e.stopPropagation(); deleteGroupMutation.mutate(group.id); }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {selectedGroup !== null && selectedGroupInfo && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              {t("groups.members")} — {selectedGroupInfo.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <form onSubmit={handleAddMember} className="flex items-end gap-2">
+              <div className="space-y-1 flex-1">
+                <Label className="text-xs">{t("groups.addMember")}</Label>
+                <Input value={newMember} onChange={(e) => setNewMember(e.target.value)} placeholder="username" />
+              </div>
+              <Button type="submit" size="sm" disabled={addMemberMutation.isPending} className="gap-1">
+                <Plus className="h-3.5 w-3.5" />{t("groups.addMember")}
+              </Button>
+            </form>
+
+            {membersQuery.isLoading && <p className="text-xs text-muted-foreground">{t("common.loading")}</p>}
+
+            {members.length === 0 && !membersQuery.isLoading && (
+              <p className="text-xs text-muted-foreground">—</p>
+            )}
+
+            <div className="space-y-1">
+              {members.map((m) => (
+                <div key={m} className="flex items-center justify-between rounded-md border border-border px-3 py-1.5">
+                  <span className="text-sm">{m}</span>
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                    onClick={() => removeMemberMutation.mutate({ groupId: selectedGroup, username: m })}
+                  >
+                    <UserMinus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -194,4 +364,3 @@ function ChangePasswordDialog({ username, onClose }: { username: string; onClose
     </Card>
   );
 }
-
