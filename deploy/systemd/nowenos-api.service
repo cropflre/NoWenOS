@@ -1,0 +1,23 @@
+﻿[Unit]
+Description=NoWenOS API Server
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/nowenos-api
+Restart=on-failure
+RestartSec=5
+User=nowenos
+Group=nowenos
+WorkingDirectory=/var/lib/nowenos
+Environment=NOWENOS_PORT=8080
+Environment=NOWENOS_DB_PATH=/var/lib/nowenos/nowenos.db
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/nowenos /var/log/nowenos /etc/samba /etc/exports.nowenos /var/lib/nowenos/trash
+
+[Install]
+WantedBy=multi-user.target

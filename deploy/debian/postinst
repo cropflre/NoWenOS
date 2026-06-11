@@ -1,0 +1,25 @@
+﻿#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        # Create user if not exists
+        if ! id -u nowenos >/dev/null 2>&1; then
+            useradd --system --no-create-home --shell /usr/sbin/nologin nowenos
+        fi
+
+        # Create data directories
+        mkdir -p /var/lib/nowenos/trash
+        mkdir -p /var/log/nowenos
+        chown -R nowenos:nowenos /var/lib/nowenos
+        chown -R nowenos:nowenos /var/log/nowenos
+
+        # Enable and start service
+        systemctl daemon-reload
+        systemctl enable nowenos-api
+        systemctl start nowenos-api || true
+        ;;
+esac
+
+#DEBHELPER#
+exit 0

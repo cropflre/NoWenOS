@@ -1,0 +1,13 @@
+﻿Source: nowenos
+Section: admin
+Priority: optional
+Maintainer: NoWenOS <noreply@nowenos.dev>
+Build-Depends: debhelper-compat (= 13), golang-go
+
+Package: nowenos
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}, samba, docker.io, sqlite3
+Description: NoWenOS - Lightweight Web NAS Management System
+ NoWenOS is a lightweight self-hosted NAS management system
+ with a desktop-like web interface. It provides file management,
+ Docker container management, Samba/WebDAV sharing, and more.
