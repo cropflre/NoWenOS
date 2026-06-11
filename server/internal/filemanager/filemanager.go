@@ -1,7 +1,10 @@
 package filemanager
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -325,4 +328,224 @@ func Move(sourcePath, destDir string) (*FileEntry, error) {
 		Size:    newInfo.Size(),
 		ModTime: newInfo.ModTime().Format("2006-01-02 15:04:05"),
 	}, nil
+}
+
+var ErrSearchLimitReached = errors.New("search result limit reached")
+
+func SearchFiles(rootPath, query string) ([]FileEntry, error) {
+	if rootPath == "" {
+		return nil, ErrPathRequired
+	}
+	if query == "" {
+		return nil, errors.New("search query is required")
+	}
+
+	rootPath = filepath.Clean(rootPath)
+	info, err := os.Stat(rootPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrPathNotFound
+		}
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, ErrNotDirectory
+	}
+
+	query = strings.ToLower(query)
+	results := make([]FileEntry, 0)
+	limit := 100
+
+	err = filepath.Walk(rootPath, func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return nil // skip entries we can't access
+		}
+		if strings.HasPrefix(fi.Name(), ".") {
+			if fi.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.Contains(strings.ToLower(fi.Name()), query) {
+			results = append(results, FileEntry{
+				Name:    fi.Name(),
+				Path:    path,
+				IsDir:   fi.IsDir(),
+				Size:    fi.Size(),
+				ModTime: fi.ModTime().Format("2006-01-02 15:04:05"),
+			})
+			if len(results) >= limit {
+				return ErrSearchLimitReached
+			}
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, ErrSearchLimitReached) {
+		return nil, err
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].IsDir != results[j].IsDir {
+			return results[i].IsDir
+		}
+		return strings.ToLower(results[i].Name) < strings.ToLower(results[j].Name)
+	})
+
+	return results, nil
+}
+
+func CompressFiles(paths []string, destPath string) error {
+	if len(paths) == 0 {
+		return errors.New("at least one source path is required")
+	}
+	if destPath == "" {
+		return ErrPathRequired
+	}
+
+	destPath = filepath.Clean(destPath)
+	if !strings.HasSuffix(destPath, ".tar.gz") {
+		return errors.New("destination must have .tar.gz extension")
+	}
+
+	// Validate all source paths exist
+	for _, p := range paths {
+		p = filepath.Clean(p)
+		if _, err := os.Stat(p); err != nil {
+			return fmt.Errorf("source path not found: %s", p)
+		}
+	}
+
+	outFile, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to create archive: %w", err)
+	}
+	defer outFile.Close()
+
+	gw := gzip.NewWriter(outFile)
+	defer gw.Close()
+
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	for _, srcPath := range paths {
+		srcPath = filepath.Clean(srcPath)
+		baseName := filepath.Base(srcPath)
+
+		err := filepath.Walk(srcPath, func(fullPath string, fi os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// Build the name relative to the parent of srcPath
+			relPath, err := filepath.Rel(filepath.Dir(srcPath), fullPath)
+			if err != nil {
+				return err
+			}
+
+			header, err := tar.FileInfoHeader(fi, "")
+			if err != nil {
+				return err
+			}
+			header.Name = relPath
+
+			if fi.Mode().IsDir() {
+				header.Name += "/"
+			}
+
+			if err := tw.WriteHeader(header); err != nil {
+				return err
+			}
+
+			if !fi.Mode().IsRegular() {
+				return nil
+			}
+
+			f, err := os.Open(fullPath)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			if _, err := io.Copy(tw, f); err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to archive %s: %w", baseName, err)
+		}
+	}
+
+	return nil
+}
+
+func ExtractFile(archivePath, destDir string) error {
+	if archivePath == "" || destDir == "" {
+		return ErrPathRequired
+	}
+
+	archivePath = filepath.Clean(archivePath)
+	destDir = filepath.Clean(destDir)
+
+	if _, err := os.Stat(archivePath); err != nil {
+		return ErrPathNotFound
+	}
+
+	// Ensure destination directory exists
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
+
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return fmt.Errorf("failed to open archive: %w", err)
+	}
+	defer f.Close()
+
+	gr, err := gzip.NewReader(f)
+	if err != nil {
+		return fmt.Errorf("failed to read gzip: %w", err)
+	}
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar entry: %w", err)
+		}
+
+		target := filepath.Join(destDir, header.Name)
+
+		// Prevent path traversal
+		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)) {
+			return fmt.Errorf("invalid archive entry: %s", header.Name)
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			outFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+		}
+	}
+
+	return nil
 }

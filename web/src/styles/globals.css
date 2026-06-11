@@ -65,6 +65,7 @@
 
 /* ── Cyber NAS Light Theme (default) ── */
 :root {
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
   --radius: 0.625rem;
   --background: #f8fafc;
   --foreground: #0f172a;

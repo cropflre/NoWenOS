@@ -2,10 +2,12 @@
 
 import (
 	"log"
+	"time"
 
 	"nowenos-server/internal/alerts"
 	"nowenos-server/internal/appcenter"
 	"nowenos-server/internal/proxy"
+	"nowenos-server/internal/statsstore"
 	"nowenos-server/internal/ws"
 	"nowenos-server/internal/audit"
 	"nowenos-server/internal/auth"
@@ -15,6 +17,7 @@ import (
 	"nowenos-server/internal/tlsconfig"
 	"nowenos-server/internal/recyclebin"
 	"nowenos-server/internal/shares"
+	"nowenos-server/internal/backup"
 )
 
 func main() {
@@ -29,11 +32,20 @@ func main() {
 	auth.InitGroupsTable()
 	alerts.InitTable()
 	shares.InitTable()
+	backup.InitBackupDir()
 	recyclebin.InitTable()
 	audit.InitTable()
 	appcenter.InitTable()
 	proxy.InitTable()
 	alerts.StartPeriodicCheck()
+	statsstore.InitTable()
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			statsstore.Cleanup(7)
+		}
+	}()
 	ws.StartBroadcast()
 
 	r := httpapi.New()

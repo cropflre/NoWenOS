@@ -452,6 +452,68 @@ const translations: Record<string, Record<Locale, string>> = {
   "files.moveFailed": { en: "Move failed", zh: "移动失败" },
 
 
+
+  // File manager batch & search
+  "files.searchPlaceholder": { en: "Search files...", zh: "搜索文件..." },
+  "files.searchResults": { en: "Search Results", zh: "搜索结果" },
+  "files.noResults": { en: "No results found", zh: "未找到结果" },
+  "files.batchDelete": { en: "Delete Selected", zh: "删除选中" },
+  "files.compress": { en: "Compress", zh: "压缩" },
+  "files.extract": { en: "Extract", zh: "解压" },
+  "files.compressSuccess": { en: "Files compressed", zh: "文件已压缩" },
+  "files.compressFailed": { en: "Compression failed", zh: "压缩失败" },
+  "files.extractSuccess": { en: "Archive extracted", zh: "归档已解压" },
+  "files.extractFailed": { en: "Extraction failed", zh: "解压失败" },
+
+  // Dashboard history
+  "dashboard.history": { en: "History", zh: "历史数据" },
+
+  // Backup
+  "nav.backup": { en: "Backup", zh: "备份" },
+  "backup.title": { en: "Backup & Restore", zh: "备份与恢复" },
+  "backup.subtitle": { en: "Manage system backups", zh: "管理系统备份" },
+  "backup.create": { en: "Create Backup", zh: "创建备份" },
+  "backup.restore": { en: "Restore", zh: "恢复" },
+  "backup.delete": { en: "Delete", zh: "删除" },
+  "backup.createSuccess": { en: "Backup created", zh: "备份已创建" },
+  "backup.createFailed": { en: "Backup failed", zh: "备份失败" },
+  "backup.restoreSuccess": { en: "Restore complete", zh: "恢复完成" },
+  "backup.restoreFailed": { en: "Restore failed", zh: "恢复失败" },
+  "backup.deleteSuccess": { en: "Backup deleted", zh: "备份已删除" },
+  "backup.deleteFailed": { en: "Delete failed", zh: "删除失败" },
+  "backup.restoreConfirm": { en: "Restore from this backup? Current data will be overwritten.", zh: "从此备份恢复？当前数据将被覆盖。" },
+  "backup.deleteConfirm": { en: "Delete this backup?", zh: "删除此备份？" },
+  "backup.noBackups": { en: "No backups yet", zh: "暂无备份" },
+  "backup.loading": { en: "Loading...", zh: "加载中..." },
+  "backup.name": { en: "Name", zh: "名称" },
+  "backup.size": { en: "Size", zh: "大小" },
+  "backup.date": { en: "Date", zh: "日期" },
+
+  // Users management
+  "users.admin": { en: "Admin", zh: "管理员" },
+  "users.user": { en: "User", zh: "用户" },
+  "users.role": { en: "Role", zh: "角色" },
+  "users.username": { en: "Username", zh: "用户名" },
+  "users.password": { en: "Password", zh: "密码" },
+  "users.newUser": { en: "New User", zh: "新建用户" },
+  "users.created": { en: "User created", zh: "用户已创建" },
+  "users.createFailed": { en: "Create failed", zh: "创建失败" },
+  "users.deleted": { en: "User deleted", zh: "用户已删除" },
+  "users.deleteFailed": { en: "Delete failed", zh: "删除失败" },
+  "users.changePwdTitle": { en: "Change Password", zh: "修改密码" },
+  "users.currentPwd": { en: "Current Password", zh: "当前密码" },
+  "users.newPwd": { en: "New Password", zh: "新密码" },
+  "users.confirmPwd": { en: "Confirm Password", zh: "确认密码" },
+  "users.saving": { en: "Saving...", zh: "保存中..." },
+
+  // Docker compose additions
+  "docker.save": { en: "Save", zh: "保存" },
+  "docker.validate": { en: "Validate", zh: "验证" },
+
+  // Common
+  "common.yes": { en: "Yes", zh: "是" },
+
+
 };
 
 export function t(key: string, locale: Locale): string {

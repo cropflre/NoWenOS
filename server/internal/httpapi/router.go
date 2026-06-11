@@ -3,6 +3,7 @@
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"nowenos-server/internal/logviewer"
 	"nowenos-server/internal/recyclebin"
 	"nowenos-server/internal/settings"
+	"nowenos-server/internal/statsstore"
 	"nowenos-server/internal/sysinfo"
 	"nowenos-server/internal/alerts"
 	"nowenos-server/internal/updater"
@@ -23,6 +25,7 @@ import (
 	"nowenos-server/internal/proxy"
 	"nowenos-server/static"
 	"nowenos-server/internal/security"
+	"nowenos-server/internal/backup"
 )
 
 func New() *gin.Engine {
@@ -67,6 +70,23 @@ func New() *gin.Engine {
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{"data": stats})
+		})
+
+		api.GET("/system/stats/history", func(c *gin.Context) {
+			minutesStr := c.DefaultQuery("minutes", "60")
+			minutes, err := strconv.Atoi(minutesStr)
+			if err != nil || minutes <= 0 {
+				minutes = 60
+			}
+			records, err := statsstore.GetHistory(minutes)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			if records == nil {
+				records = []statsstore.StatsRecord{}
+			}
+			c.JSON(http.StatusOK, gin.H{"data": records})
 		})
 
 		api.GET("/system/network", func(c *gin.Context) {
@@ -634,6 +654,63 @@ func New() *gin.Engine {
 			c.JSON(http.StatusOK, gin.H{"data": entry})
 		})
 
+		// --- File Search / Compress / Extract ---
+		api.POST("/files/search", requireWrite(), func(c *gin.Context) {
+			var req struct {
+				Path  string `json:"path"`
+				Query string `json:"query"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if req.Path == "" {
+				req.Path = "."
+			}
+			results, err := filemanager.SearchFiles(req.Path, req.Query)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": results})
+		})
+
+		api.POST("/files/compress", requireWrite(), func(c *gin.Context) {
+			var req struct {
+				Paths    []string `json:"paths"`
+				DestPath string   `json:"destPath"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := filemanager.CompressFiles(req.Paths, req.DestPath); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "ok"}})
+		})
+
+		api.POST("/files/extract", requireWrite(), func(c *gin.Context) {
+			var req struct {
+				ArchivePath string `json:"archivePath"`
+				DestDir     string `json:"destDir"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if req.DestDir == "" {
+				req.DestDir = "."
+			}
+			if err := filemanager.ExtractFile(req.ArchivePath, req.DestDir); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "ok"}})
+		})
+
+
 		// 鈹€鈹€ Users 鈹€鈹€
 		api.GET("/users", func(c *gin.Context) {
 			users := auth.GetUsers()
@@ -798,6 +875,18 @@ func New() *gin.Engine {
 			c.JSON(http.StatusOK, gin.H{"data": auth.GetGroupMembers(id)})
 		})
 
+
+		api.GET("/logs/download", func(c *gin.Context) {
+			c.Header("Content-Disposition", "attachment; filename=nowenos.log")
+			logPath := "/var/log/nowenos/nowenos.log"
+			data, err := os.ReadFile(logPath)
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "Log file not found"})
+				return
+			}
+			c.Data(http.StatusOK, "text/plain", data)
+		})
+
 		// --- Audit ---
 		api.GET("/audit/logs", func(c *gin.Context) {
 			limitStr := c.DefaultQuery("limit", "100")
@@ -937,6 +1026,156 @@ func New() *gin.Engine {
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "toggled"}})
+		})
+
+		// --- Backup & Restore ---
+		api.GET("/backups", func(c *gin.Context) {
+			backups, err := backup.ListBackups()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": backups})
+		})
+
+		api.POST("/backups", func(c *gin.Context) {
+			if err := backup.InitBackupDir(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			path, err := backup.CreateBackup()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"path": path}})
+		})
+
+		api.DELETE("/backups/:name", func(c *gin.Context) {
+			name := c.Param("name")
+			if err := backup.DeleteBackup(name); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "deleted"}})
+		})
+
+		api.POST("/backups/:name/restore", requireRole("admin"), func(c *gin.Context) {
+			name := c.Param("name")
+			filePath := backup.BackupDir + "/" + name
+			if err := backup.RestoreBackup(filePath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "restored"}})
+		})
+
+
+		// --- Docker Compose Management ---
+		api.POST("/docker/compose/up", func(c *gin.Context) {
+			var req struct { Name string `json:"name"`; FilePath string `json:"filePath"` }
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := systemadapter.ComposeUp(req.Name, req.FilePath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "started"}})
+		})
+
+		api.POST("/docker/compose/down", func(c *gin.Context) {
+			var req struct { Name string `json:"name"`; FilePath string `json:"filePath"` }
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := systemadapter.ComposeDown(req.Name, req.FilePath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "stopped"}})
+		})
+
+		api.POST("/docker/compose/restart", func(c *gin.Context) {
+			var req struct { Name string `json:"name"`; FilePath string `json:"filePath"` }
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := systemadapter.ComposeRestart(req.Name, req.FilePath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "restarted"}})
+		})
+
+		api.GET("/docker/compose/:name/logs", func(c *gin.Context) {
+			name := c.Param("name")
+			tailStr := c.DefaultQuery("tail", "100")
+			tail := 100
+			fmt.Sscanf(tailStr, "%d", &tail)
+			logs, err := systemadapter.ComposeLogs(name, tail)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"logs": logs}})
+		})
+
+		api.POST("/docker/compose/validate", func(c *gin.Context) {
+			var req struct { Path string `json:"path"` }
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			output, err := systemadapter.ValidateComposeFile(req.Path)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "output": output})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"valid": true, "output": output}})
+		})
+
+		api.POST("/docker/compose/deploy", func(c *gin.Context) {
+			var req struct { Path string `json:"path"` }
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := systemadapter.DeployComposeFile(req.Path); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "deployed"}})
+		})
+
+		api.POST("/docker/compose/file/read", func(c *gin.Context) {
+			var req struct { Path string `json:"path"` }
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			content, err := systemadapter.ReadComposeFile(req.Path)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"content": content}})
+		})
+
+		api.POST("/docker/compose/file/write", func(c *gin.Context) {
+			var req struct { Path string `json:"path"`; Content string `json:"content"` }
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := systemadapter.WriteComposeFile(req.Path, req.Content); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "saved"}})
 		})
 
 		// --- Reverse Proxy ---

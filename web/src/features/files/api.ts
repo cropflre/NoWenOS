@@ -124,3 +124,15 @@ export async function renameFile(path: string, newName: string) {
 export async function moveFile(sourcePath: string, destDir: string) {
   return api.post<MoveResponse>("/files/move", { sourcePath, destDir });
 }
+
+export async function searchFiles(path: string, query: string) {
+  return api.get<{ data: FileEntry[] }>(`/files/search?path=${encodeURIComponent(path)}&query=${encodeURIComponent(query)}`);
+}
+
+export async function compressFiles(paths: string[], destPath: string) {
+  return api.post("/files/compress", { paths, destPath });
+}
+
+export async function extractFile(archivePath: string, destDir: string) {
+  return api.post("/files/extract", { archivePath, destDir });
+}

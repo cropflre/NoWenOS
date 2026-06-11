@@ -1,4 +1,4 @@
-import { api } from "@/api/http";
+﻿import { api } from "@/api/http";
 
 export interface SystemInfoResponse {
   data: {
@@ -106,4 +106,22 @@ export interface HardwareResponse {
 
 export async function fetchHardware() {
   return api.get<HardwareResponse>("/system/hardware");
+}
+
+export interface StatsHistoryRecord {
+  id: number;
+  cpu: number;
+  memory: number;
+  disk: number;
+  rxBytes: number;
+  txBytes: number;
+  createdAt: string;
+}
+
+export interface StatsHistoryResponse {
+  data: StatsHistoryRecord[];
+}
+
+export async function fetchStatsHistory(minutes: number = 60) {
+  return api.get<StatsHistoryResponse>(/system/stats/history?minutes=);
 }

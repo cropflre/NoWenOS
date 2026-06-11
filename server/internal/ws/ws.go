@@ -1,4 +1,4 @@
-package ws
+﻿package ws
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"nowenos-server/internal/statsstore"
 	"nowenos-server/internal/sysinfo"
 )
 
@@ -143,6 +144,8 @@ func StartBroadcast() {
 				},
 			}
 			data, _ := json.Marshal(msg)
+			statsstore.RecordStats(stats.CPU.Usage, stats.Memory.Usage, stats.Disk.Usage, 0, 0)
+
 			hub.broadcast(data)
 		}
 	}()

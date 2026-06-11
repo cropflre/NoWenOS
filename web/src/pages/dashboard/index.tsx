@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchSystemInfo, fetchSystemStats, fetchNetworkStats, fetchProcesses } from "@/features/system/api";
+import { fetchSystemInfo, fetchSystemStats, fetchNetworkStats, fetchProcesses, fetchStatsHistory } from "@/features/system/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Cpu, HardDrive, MemoryStick, Server, Clock, Network, List, Wifi, ArrowDown, ArrowUp } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -16,6 +16,9 @@ export default function DashboardPage() {
   const stats = statsQuery.data?.data;
   const network = networkQuery.data?.data;
   const processes = processesQuery.data?.data ?? [];
+  const [timeRange, setTimeRange] = useState(5);
+  const historyQuery = useQuery({ queryKey: ["stats-history", timeRange], queryFn: () => fetchStatsHistory(timeRange), refetchInterval: 30000 });
+  const historyData = historyQuery.data?.data ?? [];
   const { stats: wsStats, connected: wsConnected, cpuHistory, memoryHistory } = useWebSocket();
 
   // Use WS data when available, fallback to polling
@@ -93,6 +96,42 @@ export default function DashboardPage() {
           loading={statsQuery.isLoading}
         />
       </div>
+
+      {/* Time Range History */}
+      <Card className="border-border bg-card">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">{t("dashboard.history")}</CardTitle>
+            <div className="flex gap-1">
+              {[5, 15, 60, 360, 1440].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setTimeRange(m)}
+                  className={"rounded-md px-2 py-0.5 text-xs font-medium transition-colors " + (timeRange === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent")}
+                >
+                  {m < 60 ? `${m}m` : m < 1440 ? `${m / 60}h` : `${m / 1440}d`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {historyData.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground mb-1">CPU %</p>
+                <MiniChart data={historyData.map((r) => r.cpu)} color="#06b6d4" height={60} />
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground mb-1">Memory %</p>
+                <MiniChart data={historyData.map((r) => r.memory)} color="#22c55e" height={60} />
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{t("dashboard.loading")}</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Network + Processes */}
       <div className="grid gap-4 lg:grid-cols-2">

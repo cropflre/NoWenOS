@@ -8,6 +8,9 @@ import {
   deleteFile,
   createDirectory,
   renameFile,
+  searchFiles,
+  compressFiles,
+  extractFile,
 } from "@/features/files/api";
 import { trashFile } from "@/features/recycle/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +26,11 @@ import {
   ArrowLeft,
   Pencil,
   Eye,
+  Search,
+  Archive,
+  Package,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { FilePreview } from "@/components/FilePreview";
 
@@ -33,6 +41,9 @@ export default function FilesPage() {
   const [newDirName, setNewDirName] = useState("");
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[] | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [isDragging, setIsDragging] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ path: string; name: string } | null>(null);
   const [fileInputEl, setFileInputEl] = useState<HTMLInputElement | null>(null);
@@ -91,6 +102,25 @@ export default function FilesPage() {
     onError: () => toast.error(t("files.renameFailed")),
   });
 
+  const compressMutation = useMutation({
+    mutationFn: ({ paths, dest }: { paths: string[]; dest: string }) => compressFiles(paths, dest),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files", currentPath] });
+      setSelectedPaths(new Set());
+      toast.success(t("files.compressSuccess"));
+    },
+    onError: () => toast.error(t("files.compressFailed")),
+  });
+
+  const extractMutation = useMutation({
+    mutationFn: ({ path, dir }: { path: string; dir: string }) => extractFile(path, dir),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["files", currentPath] });
+      toast.success(t("files.extractSuccess"));
+    },
+    onError: () => toast.error(t("files.extractFailed")),
+  });
+
   const trashMutation = useMutation({
     mutationFn: (path: string) => trashFile(path),
     onSuccess: () => {
@@ -123,6 +153,41 @@ export default function FilesPage() {
         uploadMutation.mutate({ path: currentPath, file: files[i] });
       }
     }
+  }
+
+  async function handleSearch(q: string) {
+    if (!q.trim()) { setSearchResults(null); return; }
+    try {
+      const res = await searchFiles(currentPath, q);
+      setSearchResults(res.data ?? []);
+    } catch { setSearchResults([]); }
+  }
+
+  function toggleSelect(path: string) {
+    setSelectedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path); else next.add(path);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const entries = result?.entries ?? [];
+    if (selectedPaths.size === entries.length) {
+      setSelectedPaths(new Set());
+    } else {
+      setSelectedPaths(new Set(entries.map((e) => e.path)));
+    }
+  }
+
+  function handleBatchDelete() {
+    for (const p of selectedPaths) trashMutation.mutate(p);
+    setSelectedPaths(new Set());
+  }
+
+  function handleBatchCompress() {
+    const dest = currentPath + "/archive-" + Date.now() + ".tar.gz";
+    compressMutation.mutate({ paths: Array.from(selectedPaths), dest });
   }
 
   const result = filesQuery.data?.data;
@@ -244,7 +309,49 @@ export default function FilesPage() {
 
       {result && result.entries.length > 0 && (
         <Card className="border-border relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-          {isDragging && (
+          {/* Search bar */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); handleSearch(e.target.value); }}
+            placeholder={t("files.searchPlaceholder")}
+            className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
+        {selectedPaths.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{selectedPaths.size} selected</span>
+            <Button variant="outline" size="sm" onClick={handleBatchCompress} className="h-8 text-xs">
+              <Archive className="mr-1 h-3 w-3" />{t("files.compress")}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleBatchDelete} className="h-8 text-xs">
+              <Trash2 className="mr-1 h-3 w-3" />{t("files.batchDelete")}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Search results */}
+      {searchResults && (
+        <Card className="border-border">
+          <CardContent className="p-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">{t("files.searchResults")} ({searchResults.length})</p>
+            {searchResults.length === 0 && <p className="text-xs text-muted-foreground">{t("files.noResults")}</p>}
+            {searchResults.map((f: any) => (
+              <div key={f.path} className="flex items-center gap-2 rounded px-2 py-1 hover:bg-muted/50 text-sm">
+                {f.isDir ? <Folder className="h-3.5 w-3.5 text-cyan-400" /> : <File className="h-3.5 w-3.5 text-muted-foreground" />}
+                <span className="truncate">{f.path}</span>
+              </div>
+            ))}
+            <button onClick={() => setSearchResults(null)} className="mt-2 text-xs text-muted-foreground hover:text-foreground">Close results</button>
+          </CardContent>
+        </Card>
+      )}
+
+      {isDragging && (
             <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/5">
               <div className="flex flex-col items-center gap-2 text-primary">
                 <Upload className="h-8 w-8" />
@@ -254,7 +361,12 @@ export default function FilesPage() {
           )}
           <CardContent className="p-0">
             <div className="divide-y divide-border">
-              <div className="grid grid-cols-[1fr_120px_180px_120px] px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider bg-muted/30">
+              <div className="grid grid-cols-[36px_1fr_120px_180px_120px] px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider bg-muted/30">
+                <span className="flex items-center justify-center">
+                  <button onClick={toggleSelectAll} className="h-4 w-4">
+                    {selectedPaths.size > 0 && selectedPaths.size === (result?.entries.length ?? 0) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                </span>
                 <span>{t("files.name")}</span>
                 <span className="text-right">{t("files.size")}</span>
                 <span className="text-right">{t("files.modified")}</span>
@@ -264,8 +376,13 @@ export default function FilesPage() {
               {result.entries.map((entry) => (
                 <div
                   key={entry.path}
-                  className="grid grid-cols-[1fr_120px_180px_120px] items-center px-4 py-2.5 hover:bg-muted/30 transition-colors"
+                  className="grid grid-cols-[36px_1fr_120px_180px_120px] items-center px-4 py-2.5 hover:bg-muted/30 transition-colors"
                 >
+                  <span className="flex items-center justify-center">
+                    <button onClick={() => toggleSelect(entry.path)}>
+                      {selectedPaths.has(entry.path) ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                  </span>
                   {renamingPath === entry.path ? (
                     <input
                       autoFocus
@@ -300,6 +417,11 @@ export default function FilesPage() {
                     <Button variant="ghost" size="sm" onClick={() => { setRenamingPath(entry.path); setNewName(entry.name); }} className="h-8 w-8 p-0">
                       <Pencil className="h-4 w-4" />
                     </Button>
+                    {!entry.isDir && entry.name.endsWith(".tar.gz") && (
+                      <Button variant="ghost" size="sm" onClick={() => extractMutation.mutate({ path: entry.path, dir: currentPath })} className="h-8 w-8 p-0" title={t("files.extract")}>
+                        <Package className="h-4 w-4" />
+                      </Button>
+                    )}
                     {!entry.isDir && (
                       <>
                         <Button variant="ghost" size="sm" onClick={() => setPreviewFile({ path: entry.path, name: entry.name })} className="h-8 w-8 p-0" title={t("files.preview")}>
