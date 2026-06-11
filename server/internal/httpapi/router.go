@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"nowenos-server/internal/audit"
 	"nowenos-server/internal/auth"
 	"nowenos-server/internal/filemanager"
 	"nowenos-server/internal/logviewer"
@@ -44,6 +45,7 @@ func New() *gin.Engine {
 	// Protected routes
 	api := r.Group("/api/v1")
 	api.Use(authMiddleware())
+	api.Use(audit.AuditMiddleware())
 	{
 		api.GET("/system/info", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"data": gin.H{"name": "NoWenOS", "version": "0.1.0"}})
@@ -719,6 +721,88 @@ func New() *gin.Engine {
 		})
 	}
 
+
+		// --- Groups ---
+		api.GET("/groups", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": auth.GetGroups()})
+		})
+
+		api.POST("/groups", func(c *gin.Context) {
+			var req struct {
+				Name    string `json:"name"`
+				Comment string `json:"comment"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			group, err := auth.CreateGroup(req.Name, req.Comment)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": group})
+		})
+
+		api.DELETE("/groups/:id", func(c *gin.Context) {
+			id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+			if err := auth.DeleteGroup(id); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "deleted"}})
+		})
+
+		api.POST("/groups/:id/members", func(c *gin.Context) {
+			id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+			var req struct {
+				Username string `json:"username"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			if err := auth.AddUserToGroup(req.Username, id); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "added"}})
+		})
+
+		api.DELETE("/groups/:id/members/:username", func(c *gin.Context) {
+			id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+			username := c.Param("username")
+			if err := auth.RemoveUserFromGroup(username, id); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{"data": gin.H{"status": "removed"}})
+		})
+
+		api.GET("/users/:username/groups", func(c *gin.Context) {
+			username := c.Param("username")
+			c.JSON(http.StatusOK, gin.H{"data": auth.GetUserGroups(username)})
+		})
+
+		api.GET("/groups/:id/members", func(c *gin.Context) {
+			id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+			c.JSON(http.StatusOK, gin.H{"data": auth.GetGroupMembers(id)})
+		})
+
+		// --- Audit ---
+		api.GET("/audit/logs", func(c *gin.Context) {
+			limitStr := c.DefaultQuery("limit", "100")
+			limit, _ := strconv.Atoi(limitStr)
+			action := c.Query("action")
+			username := c.Query("username")
+			logs := audit.GetLogs(limit, action, username)
+			c.JSON(http.StatusOK, gin.H{"data": logs})
+		})
+
+		api.GET("/audit/stats", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"data": audit.GetStats()})
+		})
+
 	return r
 }
 
@@ -739,12 +823,15 @@ func authMiddleware() gin.HandlerFunc {
 		}
 
 		token := parts[1]
-		if !auth.ValidateToken(token) {
+		username, err := auth.ValidateTokenAndExtractUser(token)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
 		}
 
+		c.Set("username", username)
+		c.Set("role", auth.GetUserRole(username))
 		c.Next()
 	}
 }

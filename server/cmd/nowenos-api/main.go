@@ -3,12 +3,13 @@ package main
 import (
 	"log"
 
+	"nowenos-server/internal/alerts"
+	"nowenos-server/internal/audit"
 	"nowenos-server/internal/auth"
 	"nowenos-server/internal/config"
 	"nowenos-server/internal/database"
 	"nowenos-server/internal/httpapi"
 	"nowenos-server/internal/recyclebin"
-	"nowenos-server/internal/alerts"
 	"nowenos-server/internal/shares"
 )
 
@@ -21,9 +22,11 @@ func main() {
 
 	// Initialize default users
 	auth.InitDB()
+	auth.InitGroupsTable()
 	alerts.InitTable()
 	shares.InitTable()
 	recyclebin.InitTable()
+	audit.InitTable()
 	alerts.StartPeriodicCheck()
 
 	r := httpapi.New()

@@ -1,4 +1,4 @@
-package auth
+﻿package auth
 
 import (
 	"crypto/hmac"
@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -101,7 +102,7 @@ func Login(req LoginRequest) (*LoginResponse, error) {
 		return nil, ErrInvalidCredentials
 	}
 
-	token, err := generateToken(req.Username)
+	token, err := GenerateToken(req.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -216,18 +217,58 @@ func ChangePassword(username string, req ChangePasswordRequest) error {
 	return err
 }
 
-func generateToken(username string) (string, error) {
+func GenerateToken(username string) (string, error) {
 	initSecret()
 
-	payload := username + "|" + time.Now().Format(time.RFC3339)
+	payload := username + "|" + time.Now().Format(time.RFC3339Nano)
 	mac := hmac.New(sha256.New, secretKey)
 	mac.Write([]byte(payload))
 	sig := hex.EncodeToString(mac.Sum(nil))
 
-	return sig, nil
+	return payload + "|" + sig, nil
 }
 
-func ValidateToken(token string) bool {
+func ValidateTokenAndExtractUser(token string) (string, error) {
 	initSecret()
-	return len(token) > 0
+
+	parts := strings.SplitN(token, "|", 3)
+	if len(parts) != 3 {
+		return "", errors.New("invalid token format")
+	}
+
+	username := parts[0]
+	timestampStr := parts[1]
+	signature := parts[2]
+
+	// Verify timestamp is not too old (24 hours)
+	t, err := time.Parse(time.RFC3339Nano, timestampStr)
+	if err != nil {
+		return "", errors.New("invalid token timestamp")
+	}
+	if time.Since(t) > 24*time.Hour {
+		return "", errors.New("token expired")
+	}
+
+	// Verify HMAC
+	payload := username + "|" + timestampStr
+	mac := hmac.New(sha256.New, secretKey)
+	mac.Write([]byte(payload))
+	expected := hex.EncodeToString(mac.Sum(nil))
+
+	if !hmac.Equal([]byte(signature), []byte(expected)) {
+		return "", errors.New("invalid token signature")
+	}
+
+	return username, nil
 }
+
+func GetUserRole(username string) string {
+	db := database.GetDB()
+	var role string
+	err := db.QueryRow("SELECT role FROM users WHERE username = ?", username).Scan(&role)
+	if err != nil {
+		return "user"
+	}
+	return role
+}
+
